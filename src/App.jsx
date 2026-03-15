@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API = "https://apiminecraft.onrender.com";
+const API = "https://apiminecraft-production.up.railway.app";
 
 // ════════════════════════════════════════════════════════════════
 //  CORES E ESTILOS

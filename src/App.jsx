@@ -23,13 +23,18 @@ const estilos = {
 // ════════════════════════════════════════════════════════════════
 //  PÁGINA DE LOGIN
 // ════════════════════════════════════════════════════════════════
-function Login() {
+function Login({ erro }) {
   return (
     <div style={{ ...estilos.fundo, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ ...estilos.card, textAlign: "center", maxWidth: "400px", width: "90%" }}>
         <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚙️</div>
         <h1 style={{ color: "#5865F2", marginBottom: "0.5rem" }}>Painel Minecraft Bot</h1>
         <p style={{ color: "#aaa", marginBottom: "2rem" }}>Configure seu bot para cada servidor Discord</p>
+        {erro && (
+          <div style={{ background: "#2a1a1a", border: "1px solid #ED4245", borderRadius: "8px", padding: "0.8rem", marginBottom: "1.2rem", color: "#ED4245", fontSize: "0.9rem" }}>
+            {erro}
+          </div>
+        )}
         <a href={`${API}/painel/auth/discord`} style={{ textDecoration: "none" }}>
           <button style={{ ...estilos.botao, width: "100%", padding: "0.9rem", fontSize: "1rem" }}>
             🎮 Login com Discord
@@ -264,8 +269,21 @@ export default function App() {
   const [carregando, setCarregando] = useState(true);
   const [pagina, setPagina] = useState("dashboard");
   const [guildSelecionada, setGuildSelecionada] = useState(null);
+  const [erroAuth, setErroAuth] = useState(null);
 
   useEffect(() => {
+    // Verifica se voltou do Discord com erro
+    const params = new URLSearchParams(window.location.search);
+    const erro = params.get("erro");
+    const wait = params.get("wait");
+    if (erro === "rate_limit") {
+      setErroAuth(`⏳ Discord em cooldown. Aguarde ${wait || "alguns"} minuto(s) e tente novamente.`);
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (erro) {
+      setErroAuth("❌ Falha no login. Tente novamente.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
     fetch(`${API}/painel/auth/me`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(data => { setUsuario(data); setCarregando(false); })
@@ -280,7 +298,7 @@ export default function App() {
     );
   }
 
-  if (!usuario) return <Login />;
+  if (!usuario) return <Login erro={erroAuth} />;
 
   return (
     <div style={estilos.fundo}>

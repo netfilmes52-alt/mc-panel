@@ -2,9 +2,6 @@ import { useState, useEffect } from "react";
 
 const API = "https://apiminecraft-production.up.railway.app";
 
-// ════════════════════════════════════════════════════════════════
-//  CORES E ESTILOS
-// ════════════════════════════════════════════════════════════════
 const estilos = {
   fundo: { minHeight: "100vh", background: "#0f1117", color: "#fff", fontFamily: "Inter, sans-serif" },
   nav: { background: "#1a1d2e", borderBottom: "1px solid #2a2d3e", padding: "1rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between" },
@@ -20,9 +17,18 @@ const estilos = {
   badge: { background: "#5865F2", borderRadius: "6px", padding: "0.2rem 0.6rem", fontSize: "0.75rem", fontWeight: "700" },
 };
 
-// ════════════════════════════════════════════════════════════════
-//  PÁGINA DE LOGIN
-// ════════════════════════════════════════════════════════════════
+// ── Helper: busca autenticada com token ──────────────────────────
+function apiFetch(path, token, options = {}) {
+  return fetch(`${API}${path}`, {
+    ...options,
+    headers: {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
 function Login({ erro }) {
   return (
     <div style={{ ...estilos.fundo, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -48,10 +54,7 @@ function Login({ erro }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════
-//  NAVBAR
-// ════════════════════════════════════════════════════════════════
-function Navbar({ usuario, onVoltar, paginaAtual }) {
+function Navbar({ usuario, token, onVoltar, paginaAtual }) {
   return (
     <nav style={estilos.nav}>
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -66,7 +69,7 @@ function Navbar({ usuario, onVoltar, paginaAtual }) {
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <img src={usuario.avatar} alt="" style={estilos.avatar} />
           <span style={{ color: "#aaa", fontSize: "0.9rem" }}>{usuario.username}</span>
-          <a href={`${API}/painel/auth/logout`} style={{ textDecoration: "none" }}>
+          <a href={`${API}/painel/auth/logout?token=${token}`} style={{ textDecoration: "none" }}>
             <button style={{ ...estilos.botaoVermelho, padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}>
               Sair
             </button>
@@ -77,25 +80,21 @@ function Navbar({ usuario, onVoltar, paginaAtual }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════
-//  DASHBOARD - Lista de servidores
-// ════════════════════════════════════════════════════════════════
-function Dashboard({ usuario, onSelecionarGuild }) {
+function Dashboard({ usuario, token, onSelecionarGuild }) {
   const [guilds, setGuilds] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/painel/guilds`, { credentials: "include" })
+    apiFetch('/painel/guilds', token)
       .then(r => r.json())
       .then(data => { setGuilds(data); setCarregando(false); })
       .catch(() => setCarregando(false));
-  }, []);
+  }, [token]);
 
   return (
     <div style={{ padding: "2rem" }}>
       <h2 style={{ marginBottom: "0.5rem" }}>Seus Servidores</h2>
       <p style={{ color: "#aaa", marginBottom: "2rem" }}>Selecione um servidor para configurar o bot.</p>
-
       {carregando ? (
         <p style={{ color: "#aaa" }}>Carregando servidores...</p>
       ) : guilds.length === 0 ? (
@@ -139,23 +138,17 @@ function Dashboard({ usuario, onSelecionarGuild }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════
-//  CONFIG - Configuração de um servidor
-// ════════════════════════════════════════════════════════════════
-function Config({ guildId, onVoltar }) {
+function Config({ guildId, token, onVoltar }) {
   const [guild, setGuild] = useState(null);
   const [form, setForm] = useState({});
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState(null);
 
   useEffect(() => {
-    fetch(`${API}/painel/guild/${guildId}`, { credentials: "include" })
+    apiFetch(`/painel/guild/${guildId}`, token)
       .then(r => r.json())
-      .then(data => {
-        setGuild(data);
-        setForm(data.config);
-      });
-  }, [guildId]);
+      .then(data => { setGuild(data); setForm(data.config); });
+  }, [guildId, token]);
 
   function atualizar(campo, valor) {
     setForm(f => ({ ...f, [campo]: valor }));
@@ -165,11 +158,9 @@ function Config({ guildId, onVoltar }) {
     setSalvando(true);
     setMensagem(null);
     try {
-      const res = await fetch(`${API}/painel/guild/${guildId}/save`, {
+      const res = await apiFetch(`/painel/guild/${guildId}/save`, token, {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
+        body: JSON.stringify(form),
       });
       const data = await res.json();
       if (data.sucesso) {
@@ -199,8 +190,6 @@ function Config({ guildId, onVoltar }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
-
-        {/* Servidor Minecraft */}
         <div style={estilos.card}>
           <h3 style={{ margin: "0 0 1rem 0", color: "#5865F2" }}>🌐 Servidor Minecraft</h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "0.8rem", alignItems: "end" }}>
@@ -215,7 +204,6 @@ function Config({ guildId, onVoltar }) {
           </div>
         </div>
 
-        {/* Personalização */}
         <div style={estilos.card}>
           <h3 style={{ margin: "0 0 1rem 0", color: "#5865F2" }}>🎨 Personalização</h3>
           <div style={{ marginBottom: "1rem" }}>
@@ -233,20 +221,18 @@ function Config({ guildId, onVoltar }) {
           </div>
         </div>
 
-        {/* Discord */}
         <div style={estilos.card}>
           <h3 style={{ margin: "0 0 1rem 0", color: "#5865F2" }}>📢 Discord</h3>
           <div style={{ marginBottom: "1rem" }}>
             <label style={estilos.label}>ID do Canal de Alertas</label>
-            <input style={estilos.input} value={form.canal_alertas || ""} onChange={e => atualizar("canal_alertas", e.target.value)} placeholder="ID do canal (clique com botão direito → Copiar ID)" />
+            <input style={estilos.input} value={form.canal_alertas || ""} onChange={e => atualizar("canal_alertas", e.target.value)} placeholder="ID do canal" />
           </div>
           <div>
             <label style={estilos.label}>ID do Cargo Admin</label>
-            <input style={estilos.input} value={form.cargo_admin || ""} onChange={e => atualizar("cargo_admin", e.target.value)} placeholder="ID do cargo (clique com botão direito → Copiar ID)" />
+            <input style={estilos.input} value={form.cargo_admin || ""} onChange={e => atualizar("cargo_admin", e.target.value)} placeholder="ID do cargo" />
           </div>
         </div>
 
-        {/* Botão salvar */}
         {mensagem && (
           <div style={{ padding: "0.8rem 1rem", borderRadius: "8px", background: mensagem.tipo === "sucesso" ? "#1a3a2a" : "#3a1a1a", border: `1px solid ${mensagem.tipo === "sucesso" ? "#57F287" : "#ED4245"}`, color: mensagem.tipo === "sucesso" ? "#57F287" : "#ED4245" }}>
             {mensagem.texto}
@@ -261,32 +247,48 @@ function Config({ guildId, onVoltar }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════
-//  APP PRINCIPAL
-// ════════════════════════════════════════════════════════════════
 export default function App() {
   const [usuario, setUsuario] = useState(null);
+  const [token, setToken] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [pagina, setPagina] = useState("dashboard");
   const [guildSelecionada, setGuildSelecionada] = useState(null);
   const [erroAuth, setErroAuth] = useState(null);
 
   useEffect(() => {
-    // Verifica se voltou do Discord com erro
     const params = new URLSearchParams(window.location.search);
+    const tokenUrl = params.get("token");
     const erro = params.get("erro");
     const wait = params.get("wait");
+
     if (erro === "rate_limit") {
       setErroAuth(`⏳ Discord em cooldown. Aguarde ${wait || "alguns"} minuto(s) e tente novamente.`);
       window.history.replaceState({}, "", window.location.pathname);
+      setCarregando(false);
+      return;
     } else if (erro) {
       setErroAuth("❌ Falha no login. Tente novamente.");
       window.history.replaceState({}, "", window.location.pathname);
+      setCarregando(false);
+      return;
     }
 
-    fetch(`${API}/painel/auth/me`, { credentials: "include" })
+    // Pega token da URL ou do sessionStorage
+    const t = tokenUrl || sessionStorage.getItem("mc_token");
+    if (!t) { setCarregando(false); return; }
+
+    // Salva token e limpa URL
+    sessionStorage.setItem("mc_token", t);
+    if (tokenUrl) window.history.replaceState({}, "", "/dashboard");
+
+    // Valida token com a API
+    fetch(`${API}/painel/auth/me`, { headers: { Authorization: `Bearer ${t}` } })
       .then(r => r.ok ? r.json() : null)
-      .then(data => { setUsuario(data); setCarregando(false); })
+      .then(data => {
+        if (data) { setUsuario(data); setToken(t); }
+        else sessionStorage.removeItem("mc_token");
+        setCarregando(false);
+      })
       .catch(() => setCarregando(false));
   }, []);
 
@@ -304,21 +306,21 @@ export default function App() {
     <div style={estilos.fundo}>
       <Navbar
         usuario={usuario}
+        token={token}
         paginaAtual={pagina}
         onVoltar={() => { setPagina("dashboard"); setGuildSelecionada(null); }}
       />
       {pagina === "dashboard" && (
         <Dashboard
           usuario={usuario}
-          onSelecionarGuild={guild => {
-            setGuildSelecionada(guild.id);
-            setPagina("config");
-          }}
+          token={token}
+          onSelecionarGuild={guild => { setGuildSelecionada(guild.id); setPagina("config"); }}
         />
       )}
       {pagina === "config" && guildSelecionada && (
         <Config
           guildId={guildSelecionada}
+          token={token}
           onVoltar={() => { setPagina("dashboard"); setGuildSelecionada(null); }}
         />
       )}
